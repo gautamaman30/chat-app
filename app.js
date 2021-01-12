@@ -1,35 +1,31 @@
-const path = require('path');
-const http = require('http');
-const express = require('express');
-const redis = require("redis");
-const WebSocketServer = require('ws').Server;
+import path from 'path'
+import http from 'http'
+import express from 'express'
+import ws from 'ws'
+import redisObj from './redis.js'
 
-
-let staticFilePath = path.join(process.cwd(),"public");
-console.log(staticFilePath);
 
 const app = express();
+let staticFilePath = path.join(process.cwd(),"public");
 app.use(express.static('public'));
 
 
-let redisSub = redis.createClient();
-let redisPub = redis.createClient();
-
-
-
+const WebSocketServer = ws.Server;
 const server = http.createServer(app);
 const wss = new WebSocketServer({server: server});
+
+
 wss.on('connection', (ws) => {
   console.log('Client connected');
   ws.on('message', (msg) => {
     console.log('Message: ' + msg);
-    redisPub.publish('chat_messages', msg);
+    redisObj.redisPublish('chat_messages', msg);
   });
 });
 
 
-redisSub.subscribe('chat_messages');
-redisSub.on('message', (channel, msg) => {
+redisObj.redisSubscribe('chat_messages');
+redisObj.redisListen('message', (channel, msg) => {
   wss.clients.forEach((client) => {
     client.send(msg);
   });
